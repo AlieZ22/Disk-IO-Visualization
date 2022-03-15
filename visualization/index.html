@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Disk visualization</title>        
+    </head>
+    <body>
+        <input  id="btn-iotrace" type="button" value="执行IO-trace" > 
+        <input  id="btn-flush" type="button" value="模拟满磁盘" >
+        <svg id='mainsvg' width='7000' height='5000' style="display: block; margin:0 auto;">
+            
+        </svg>
+        <script type='module'>
+            import * as d3 from "https://cdn.skypack.dev/d3@7";
+
+            const TOP_BLOCK_NUM = 456;
+            const BOTTOM_BLOCK_NUM = 568;
+            const TRACK_GROUP = 64;
+            const ZONE_BLOCK_SIZE = (TOP_BLOCK_NUM+BOTTOM_BLOCK_NUM)*TRACK_GROUP;  // 先做两圈磁道
+            
+            // 根据zone的大小来构造zone (value,对圆心角的划分)
+            let zone_block = []
+            for(let i=0;i<ZONE_BLOCK_SIZE;i++){
+                zone_block.push({name:'block_'+i,value:1});
+            }
+
+            // 将zone划分成交错的顶部-底部磁道
+            let tracks = []
+            let top_flag = 0x1     // 控制是否先制造顶部磁道
+            // 特别注意，splice会改变原数组，将原数组的值改变
+            for(let i=0;i<ZONE_BLOCK_SIZE;){
+                if(top_flag){
+                    tracks.push(zone_block.splice(0,TOP_BLOCK_NUM));
+                    i=i+TOP_BLOCK_NUM;
+                }else{
+                    tracks.push(zone_block.splice(0,BOTTOM_BLOCK_NUM));
+                    i=i+BOTTOM_BLOCK_NUM;
+                }
+                top_flag = !top_flag;
+            }
+            console.log(tracks)
+
+            // 将磁道可视化
+            let charts = []
+            for(let j=0;j<tracks.length;j++){
+                charts.push(DonutChart(tracks[j], j, "zone_0", {
+                    name: d => d.name,
+                    value: d => d.value,
+                    width: 3600,
+                    height: 3600
+                }));
+            }
+
+            // 导入trace文件，模拟读写过程动画
+            var trace_btn = document.getElementById("btn-iotrace");  
+            trace_btn.onclick = function(){  
+                //io_trace_func('imrsim_256MB_seq_write.csv','gray','red');
+                io_trace_func('imrsim_256MB_rand_rewrite.csv','black','red');
+            }  
+
+            var flush_btn = document.getElementById("btn-flush");  
+            flush_btn.onclick = function(){
+                d3.selectAll('.blocks').transition().duration(5000).attr('fill','gray');
+            }
+
+            let io_trace_func = function(filename, color1, color2){
+                d3.csv(filename).then(data => {
+                    //console.log(data);
+                    (async() => {
+                        for(let i=0;i<data.length;i++){
+                            let transition1 = d3.transition().duration(20)
+
+                            let victim_id = 'block_'+data[i].PBA;
+                            d3.select('#'+victim_id).transition(transition1).attr('fill',color1)
+                            let wa1_id = +(data[i].WA_1)
+                            let wa2_id = +(data[i].WA_2)
+                            if(wa1_id != -1){
+                                d3.select('#block_'+wa1_id).transition(transition1).attr('fill',color2)
+                            }
+                            if(wa2_id != -1){
+                                d3.select('#block_'+wa2_id).transition(transition1).attr('fill',color2)
+                            }
+                            await transition1.end()
+                        }
+                    })()
+                });
+            }
+            
+
+
+            // let zone0 = [
+            //     {name: "<5", value: 19912018},
+            //     {name: "5-9", value: 20501982},
+            //     {name: "10-14", value: 20679786},
+            //     {name: "15-19", value: 21354481},
+            //     {name: "20-24", value: 22604232},
+            //     {name: "25-29", value: 21698010},
+            //     {name: "30-34", value: 21183639},
+            //     {name: "35-39", value: 19855782},
+            //     {name: "40-44", value: 20796128},
+            //     {name: "45-49", value: 21370368},
+            //     {name: "50-54", value: 22525490},
+            //     {name: "55-59", value: 21001947},
+            //     {name: "60-64", value: 18415681},
+            //     {name: "65-69", value: 14547446},
+            //     {name: "70-74", value: 10587721},
+            //     {name: "75-79", value: 7730129},
+            //     {name: "80-84", value: 5811429},
+            //     {name: "≥85", value: 5938752}]
+
+            // let chart1 = DonutChart(zone0, {
+            //     name: d => d.name,
+            //     value: d => d.value,
+            //     width: 640,
+            //     height: 400
+            // })
+
+            //(async()=>{
+                // let transition = d3.transition().duration(10000);
+                // d3.selectAll('.blocks').transition(transition).attr('fill','gray').attr('opacity','0.8');
+                // // await transition.end();
+                // d3.select('#block_1').transition(transition).attr('fill','black');
+                //await transition.end();
+            // })()
+            
+
+            // Copyright 2021 Observable, Inc.
+            // Released under the ISC license.
+            // https://observablehq.com/@d3/donut-chart
+            function DonutChart(data, index, zone_idx, {
+                name = ([x]) => x,  // given d in data, returns the (ordinal) label
+                value = ([, y]) => y, // given d in data, returns the (quantitative) value
+                title, // given d in data, returns the title text
+                width = 640, // outer width, in pixels
+                height = 400, // outer height, in pixels
+                len = 8,
+                innerRadius = index*len + Math.min(width, height)/10, // inner radius of pie, in pixels (non-zero for donut)
+                outerRadius = innerRadius+len, // outer radius of pie, in pixels
+                labelRadius = (innerRadius + outerRadius) / 2, // center radius of labels
+                format = ",", // a format specifier for values (in the label)
+                names, // array of names (the domain of the color scale)
+                colors, // array of colors for names
+                stroke = innerRadius > 0 ? "none" : "white", // stroke separating widths
+                strokeWidth = 0, // width of stroke separating wedges
+                strokeLinejoin = "round", // line join of stroke separating wedges
+                padAngle = stroke === "none" ? 1 / (2*outerRadius) : 0, // angular separation between wedges
+                } = {}) {
+                // Compute values.
+                const N = d3.map(data, name);
+                const V = d3.map(data, value);
+                const I = d3.range(N.length).filter(i => !isNaN(V[i]));
+
+                // Unique the names.
+                if (names === undefined) names = N;
+                names = new d3.InternSet(names);
+
+                // Chose a default color scheme based on cardinality.
+                if (colors === undefined) colors = d3.schemeSpectral[names.size];
+                if (colors === undefined) colors = d3.quantize(t => d3.interpolateSpectral(t * 0.8 + 0.1), names.size);
+
+                // Construct scales.
+                const color = d3.scaleOrdinal(names, colors);
+
+                // Compute titles.
+                if (title === undefined) {
+                    const formatValue = d3.format(format);
+                    title = i => `${N[i]}\n${formatValue(V[i])}`;
+                } else {
+                    const O = d3.map(data, d => d);
+                    const T = title;
+                    title = i => T(O[i], i, data);
+                }
+
+                // Construct arcs.
+                const arcs = d3.pie().padAngle(padAngle).sort(null).value(i => V[i])(I);
+                const arc = d3.arc().innerRadius(innerRadius).outerRadius(outerRadius);
+                //const arcLabel = d3.arc().innerRadius(labelRadius).outerRadius(labelRadius);
+                
+                const svg = d3.select('#mainsvg').append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("viewBox", [-width / 2, -height / 2, width, height])
+                    .attr("style", "max-width: 100%; height: auto; height: intrinsic;")
+                    .attr("class",zone_idx);
+
+                // 图形
+                let track = svg.append("g")
+                    .attr("stroke", stroke)
+                    .attr("stroke-width", strokeWidth)
+                    .attr("stroke-linejoin", strokeLinejoin)
+                    .selectAll("path")
+                    .data(arcs)
+                    .join("path")
+                    .attr("fill", d => color(N[d.data]))
+                    .attr("d", arc)
+                    .attr("id", d => N[d.data])
+                    .attr("class","blocks")
+                    .append("title")
+                    .text(d => N[d.data]);
+
+                if(index%2 == 0){
+                    track.attr('opacity','0.1')
+                    //console.log("底部磁道"+index)
+                }
+                // 文字
+                // svg.append("g")
+                //     .attr("font-family", "sans-serif")
+                //     .attr("font-size", 10)
+                //     .attr("text-anchor", "middle")
+                //     .selectAll("text")
+                //     .data(arcs)
+                //     .join("text")
+                //     .attr("transform", d => `translate(${arcLabel.centroid(d)})`)
+                //     .selectAll("tspan")
+                //     .data(d => {
+                //     const lines = `${title(d.data)}`.split(/\n/);
+                //     return (d.endAngle - d.startAngle) > 0.25 ? lines : lines.slice(0, 1);
+                //     })
+                //     .join("tspan")
+                //     .attr("x", 0)
+                //     .attr("y", (_, i) => `${i * 1.1}em`)
+                //     .attr("font-weight", (_, i) => i ? null : "bold")
+                //     .text(d => d);
+
+                return Object.assign(svg.node(), {scales: {color}});
+            }
+            
+        </script>
+    </body>
+</html>

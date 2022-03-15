@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Disk visualization（Deprecated）</title>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+    </head>
+    <body>
+        <script>
+            // 响应式画布
+            var w = window,
+                d = document,
+                e = d.documentElement,
+                g = d.getElementsByTagName('body')[0],
+                x = w.innerWidth || e.clientWidth || g.clientWidth,
+                y = w.innerHeight|| e.clientHeight|| g.clientHeight,
+                x_offset = 20,
+                y_offset = 30;
+            x = x-x_offset;
+            y = y-y_offset;
+
+            var svg = d3.select("body").append("svg")
+                        .attr("width", x)
+                        .attr("height", y);
+
+            svg.append("g")
+                .append('text')
+                .attr("x",x_offset/2)
+                .attr("y",y_offset-10)
+                .style('font-weight', 500)
+                .style('font-family', 'Arial')
+                .style('fill', 'red')
+                .text("zone 0");
+            var zone0 = svg.append("rect")
+                .attr("id", "zone_0")
+                .attr("class", "zone")
+                .attr("width",(x-x_offset*2))
+                .attr("height",y/4-y_offset)
+                .attr("x",x_offset)
+                .attr("y",y_offset);
+
+            svg.append("g")
+                .append('text')
+                .attr("x",x_offset/2)
+                .attr("y",y_offset*2+(y/4-y_offset)-10)
+                .style('font-weight', 500)
+                .style('font-family', 'Arial')
+                .style('fill', 'red')
+                .text("zone 1");
+            var zone1 = svg.append("rect")
+                .attr("id", "zone_1")
+                .attr("class", "zone")
+                .attr("width",(x-x_offset*2))
+                .attr("height",y/4-y_offset)
+                .attr("x",x_offset)
+                .attr("y",y_offset*2+(y/4-y_offset))
+                .attr("fill","gray");
+
+            svg.append("g")
+                .append('text')
+                .attr("x",x_offset/2)
+                .attr("y",y_offset*3+2*(y/4-y_offset)-10)
+                .style('font-weight', 500)
+                .style('font-family', 'Arial')
+                .style('fill', 'red')
+                .text("zone 2");
+            var zone2 = svg.append("rect")
+                .attr("id", "zone_2")
+                .attr("class", "zone")
+                .attr("width",(x-x_offset*2))
+                .attr("height",y/4-y_offset)
+                .attr("x",x_offset)
+                .attr("y",y_offset*3+2*(y/4-y_offset))
+                .attr("fill","gray");
+
+            svg.append("g")
+                .append('text')
+                .attr("x",x_offset/2)
+                .attr("y",y_offset*4+3*(y/4-y_offset)-10)
+                .style('font-weight', 500)
+                .style('font-family', 'Arial')
+                .style('fill', 'red')
+                .text("zone 3");
+            var zone3 = svg.append("rect")
+                .attr("id", "zone_3")
+                .attr("class", "zone")
+                .attr("width",(x-x_offset*2))
+                .attr("height",y/4-y_offset)
+                .attr("x",x_offset)
+                .attr("y",y_offset*4+3*(y/4-y_offset))
+                .attr("fill","gray");
+            
+        </script>
+    </body>
+</html>
