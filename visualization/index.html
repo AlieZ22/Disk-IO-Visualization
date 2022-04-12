@@ -4,8 +4,8 @@
         <title>Disk visualization</title>        
     </head>
     <body>
-        <input  id="btn-iotrace" type="button" value="执行IO-trace" > 
-        <input  id="btn-flush" type="button" value="模拟满磁盘" >
+        <input  id="btn-iotrace" type="button" value="play IO-trace" > 
+        <input  id="btn-flush" type="button" value="Simulate a full disk" >
         <svg id='mainsvg' width='7000' height='5000' style="display: block; margin:0 auto;">
             
         </svg>
@@ -15,18 +15,18 @@
             const TOP_BLOCK_NUM = 456;
             const BOTTOM_BLOCK_NUM = 568;
             const TRACK_GROUP = 64;
-            const ZONE_BLOCK_SIZE = (TOP_BLOCK_NUM+BOTTOM_BLOCK_NUM)*TRACK_GROUP;  // 先做两圈磁道
+            const ZONE_BLOCK_SIZE = (TOP_BLOCK_NUM+BOTTOM_BLOCK_NUM)*TRACK_GROUP;  
             
-            // 根据zone的大小来构造zone (value,对圆心角的划分)
+            // Construct based on the size of the zone (value,division of the central angle)
             let zone_block = []
             for(let i=0;i<ZONE_BLOCK_SIZE;i++){
                 zone_block.push({name:'block_'+i,value:1});
             }
 
-            // 将zone划分成交错的顶部-底部磁道
+            // Divide the zone into staggered top and bottom tracks
             let tracks = []
-            let top_flag = 0x1     // 控制是否先制造顶部磁道
-            // 特别注意，splice会改变原数组，将原数组的值改变
+            let top_flag = 0x1     // Controls whether the top track is made first
+            // Note: splice will change the original array and change the value of the original array
             for(let i=0;i<ZONE_BLOCK_SIZE;){
                 if(top_flag){
                     tracks.push(zone_block.splice(0,TOP_BLOCK_NUM));
@@ -39,7 +39,7 @@
             }
             console.log(tracks)
 
-            // 将磁道可视化
+            // Visualize tracks
             let charts = []
             for(let j=0;j<tracks.length;j++){
                 charts.push(DonutChart(tracks[j], j, "zone_0", {
@@ -50,7 +50,7 @@
                 }));
             }
 
-            // 导入trace文件，模拟读写过程动画
+            // Import the trace file to simulate the animation of the read and write process
             var trace_btn = document.getElementById("btn-iotrace");  
             trace_btn.onclick = function(){  
                 //io_trace_func('imrsim_256MB_seq_write.csv','gray','red');
